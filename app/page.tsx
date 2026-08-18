@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HomeScreen } from "@/components/home/home-screen";
 import { RamGrid } from "@/components/ram-grid/ram-grid";
 import { StatsStrip } from "@/components/dashboard/stats-strip";
 import { AllocControls } from "@/components/controls/alloc-controls";
@@ -44,13 +46,39 @@ function StrategyTabs() {
 
 export default function Home() {
   const pageSize = usePagingStore((s) => s.state.pageSize);
+  const [view, setView] = useState<"home" | "sim">("home");
+  const [mode, setMode] = useState<"contiguous" | "paging">("contiguous");
+
+  if (view === "home") {
+    return (
+      <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] sm:border-x">
+        <HomeScreen
+          onEnter={(m) => {
+            setMode(m);
+            setView("sim");
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] sm:border-x">
-      <Tabs defaultValue="contiguous" className="flex min-h-0 flex-1 flex-col gap-2">
+      <Tabs
+        value={mode}
+        onValueChange={(v) => setMode(v as "contiguous" | "paging")}
+        className="flex min-h-0 flex-1 flex-col gap-2"
+      >
         <header className="flex items-center justify-between px-3 pt-3">
           <h1 className="font-display text-base font-semibold tracking-tight">
-            Mem<span className="text-primary">Playground</span>
-            <span className="animate-cursor ml-0.5 inline-block h-[0.85em] w-[0.45em] translate-y-[0.08em] bg-primary/80" />
+            <button
+              onClick={() => setView("home")}
+              aria-label="Back to home"
+              className="transition-transform duration-150 ease-out active:scale-[0.97]"
+            >
+              Mem<span className="text-primary">Playground</span>
+              <span className="animate-cursor ml-0.5 inline-block h-[0.85em] w-[0.45em] translate-y-[0.08em] bg-primary/80" />
+            </button>
             <span className="ml-2 rounded-sm border border-border px-1 py-px font-mono text-[9px] font-normal tracking-wide text-muted-foreground">
               1024 KB
             </span>
