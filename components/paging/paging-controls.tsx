@@ -34,7 +34,7 @@ function PagingStats() {
   return (
     <StatBar>
       <StatCell
-        label="Free frames"
+        label="Free"
         value={freeFrames}
         unit={`/ ${state.frames.length}`}
       />

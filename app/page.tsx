@@ -80,7 +80,8 @@ export default function Home() {
               Mem<span className="text-primary">Playground</span>
               <span className="animate-cursor ml-0.5 inline-block h-[0.85em] w-[0.45em] translate-y-[0.08em] bg-primary/80" />
             </button>
-            <span className="ml-2 rounded-sm border border-border px-1 py-px font-mono text-[9px] font-normal tracking-wide text-muted-foreground">
+            {/* Hidden on narrow phones: the header row overflows below ~420px. */}
+            <span className="ml-2 hidden rounded-sm border border-border px-1 py-px font-mono text-[9px] font-normal tracking-wide text-muted-foreground min-[420px]:inline-block">
               1024 KB
             </span>
           </h1>

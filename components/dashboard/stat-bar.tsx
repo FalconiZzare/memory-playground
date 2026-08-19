@@ -35,7 +35,7 @@ export function StatCell({
           : "text-foreground";
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-px px-2.5 py-2">
-      <span className="truncate text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+      <span className="truncate whitespace-nowrap text-[9px] uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </span>
       <span className={`font-mono text-[15px] font-semibold leading-tight tabular ${toneClass}`}>

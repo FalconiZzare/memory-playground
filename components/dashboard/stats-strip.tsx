@@ -11,7 +11,7 @@ export function StatsStrip() {
   return (
     <StatBar>
       <StatCell label="Free" value={m.totalFree} unit="KB" />
-      <StatCell label="Largest hole" value={m.largestHole} unit="KB" />
+      <StatCell label="Max hole" value={m.largestHole} unit="KB" />
       <StatCell
         label="Ext. frag"
         value={`${fragPct}%`}
