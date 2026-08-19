@@ -1,8 +1,16 @@
 /*
  * MemPlayground service worker.
- * Strategy: cache-first with network fill for same-origin GET requests.
- * The app is a fully static export with no data fetching, so anything
- * fetched once (HTML, JS chunks, CSS, fonts, icons) keeps working offline.
+ *
+ * Caching strategy, chosen so updates land immediately on mobile
+ * (iOS Safari in particular) while offline still works:
+ *
+ *  - Navigations (the HTML): NETWORK-FIRST. Online users always get the
+ *    freshest page, so a deploy is picked up on the next plain load with
+ *    no reload dance and no dependence on service worker update timing.
+ *    The cached copy is only served when the network is unreachable.
+ *  - /_next/static/ assets: CACHE-FIRST. File names are content-hashed,
+ *    so a cached copy can never be stale.
+ *  - Everything else same-origin (icons, manifest): STALE-WHILE-REVALIDATE.
  */
 
 // "__BUILD_ID__" is replaced with a unique id by scripts/stamp-sw.mjs on
@@ -30,6 +38,11 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function cachePut(request, response) {
+  const copy = response.clone();
+  caches.open(CACHE).then((cache) => cache.put(request, copy));
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -37,18 +50,47 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
+  // HTML: network-first, cache is the offline fallback only.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
+          if (response.ok) cachePut(request, response);
           return response;
         })
-        .catch(() => caches.match("/"));
+        .catch(() =>
+          caches
+            .match(request)
+            .then((cached) => cached || caches.match("/")),
+        ),
+    );
+    return;
+  }
+
+  // Content-hashed build assets: immutable, cache-first.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) cachePut(request, response);
+          return response;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Icons, manifest, misc: serve cached instantly, refresh in background.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (response.ok) cachePut(request, response);
+          return response;
+        })
+        .catch(() => cached);
+      return cached || network;
     }),
   );
 });

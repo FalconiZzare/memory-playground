@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Plus, RotateCcw, Table2 } from "lucide-react";
+import { Check, Plus, RotateCcw, Table2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { DemoCaptionBar } from "@/components/dashboard/demo-caption";
 import {
   Select,
   SelectContent,
@@ -160,6 +162,11 @@ export function PagingControls() {
   const allocateProcess = usePagingStore((s) => s.allocateProcess);
   const reset = usePagingStore((s) => s.reset);
   const pageSize = usePagingStore((s) => s.state.pageSize);
+  const demoRunning = usePagingStore((s) => s.demoRunning);
+  const demoCaption = usePagingStore((s) => s.demoCaption);
+  const demoStep = usePagingStore((s) => s.demoStep);
+  const demoTotal = usePagingStore((s) => s.demoTotal);
+  const setDemo = usePagingStore((s) => s.setDemo);
 
   const handleAllocate = () => {
     const ok = allocateProcess(size);
@@ -185,6 +192,7 @@ export function PagingControls() {
   return (
     <div className="flex flex-col gap-2.5 px-3 pb-3">
       <PagingStats />
+      <DemoCaptionBar caption={demoCaption} step={demoStep} total={demoTotal} />
       <ProcessChips />
       <div className="flex items-center gap-3">
         <Slider
@@ -256,6 +264,16 @@ export function PagingControls() {
         >
           <RotateCcw data-slot="icon" />
         </Button>
+        <div className="flex h-9 items-center gap-2 rounded-md border border-border px-2.5">
+          <Zap
+            className={`size-3.5 ${demoRunning ? "text-warning" : "text-muted-foreground"}`}
+          />
+          <Switch
+            checked={demoRunning}
+            onCheckedChange={setDemo}
+            aria-label="Run paging demo"
+          />
+        </div>
       </div>
     </div>
   );

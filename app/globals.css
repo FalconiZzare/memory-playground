@@ -51,11 +51,59 @@
 }
 
 /*
- * Instrument-panel palette. The app is deliberately dark-only:
- * memory maps read like hardware diagnostics, and process colors
- * need a dark ground to stay distinguishable.
+ * Instrument-panel palette in two moods. Dark is the default (memory
+ * maps read like hardware diagnostics); light is the same panel
+ * reprinted on cool paper: deeper teal/amber so contrast holds on white.
  */
 :root {
+  color-scheme: light;
+  --background: oklch(0.965 0.005 255);
+  --foreground: oklch(0.25 0.015 262);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.015 262);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.015 262);
+  --primary: oklch(0.52 0.085 175);
+  --primary-foreground: oklch(0.98 0.01 175);
+  --secondary: oklch(0.93 0.007 255);
+  --secondary-foreground: oklch(0.3 0.015 262);
+  --muted: oklch(0.94 0.006 255);
+  --muted-foreground: oklch(0.5 0.015 255);
+  --accent: oklch(0.91 0.008 255);
+  --accent-foreground: oklch(0.25 0.015 262);
+  --destructive: oklch(0.55 0.19 24);
+  --warning: oklch(0.6 0.12 84);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 14%);
+  --ring: oklch(0.52 0.085 175 / 45%);
+  --chart-1: oklch(0.52 0.085 175);
+  --chart-2: oklch(0.6 0.12 84);
+  --chart-3: oklch(0.5 0.12 255);
+  --chart-4: oklch(0.55 0.14 350);
+  --chart-5: oklch(0.55 0.02 255);
+  --radius: 0.625rem;
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.25 0.015 262);
+  --sidebar-primary: oklch(0.52 0.085 175);
+  --sidebar-primary-foreground: oklch(0.98 0.01 175);
+  --sidebar-accent: oklch(0.91 0.008 255);
+  --sidebar-accent-foreground: oklch(0.25 0.015 262);
+  --sidebar-border: oklch(0 0 0 / 10%);
+  --sidebar-ring: oklch(0.52 0.085 175 / 45%);
+
+  /* Theme-aware inks for the dot lattice and hatch patterns. */
+  --dot-ink: oklch(0 0 0 / 4%);
+  --hatch-ink: oklch(0 0 0 / 7%);
+  --hatch-warn-ink: oklch(0.6 0.12 84 / 30%);
+  --hatch-waste-ink: oklch(0.55 0.19 24 / 40%);
+
+  /* Motion: strong curves, per the design-engineering notes. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.dark {
+  color-scheme: dark;
   --background: oklch(0.17 0.016 264);
   --foreground: oklch(0.93 0.008 250);
   --card: oklch(0.205 0.018 262);
@@ -80,7 +128,6 @@
   --chart-3: oklch(0.68 0.12 255);
   --chart-4: oklch(0.72 0.14 350);
   --chart-5: oklch(0.55 0.02 255);
-  --radius: 0.625rem;
   --sidebar: oklch(0.205 0.018 262);
   --sidebar-foreground: oklch(0.93 0.008 250);
   --sidebar-primary: oklch(0.83 0.095 175);
@@ -90,14 +137,10 @@
   --sidebar-border: oklch(1 0 0 / 9%);
   --sidebar-ring: oklch(0.83 0.095 175 / 55%);
 
-  /* Motion: strong curves, per the design-engineering notes. */
-  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
-}
-
-.dark {
-  --background: oklch(0.17 0.016 264);
-  --foreground: oklch(0.93 0.008 250);
+  --dot-ink: oklch(1 0 0 / 3%);
+  --hatch-ink: oklch(1 0 0 / 5%);
+  --hatch-warn-ink: oklch(0.79 0.13 84 / 16%);
+  --hatch-waste-ink: oklch(0.64 0.19 24 / 38%);
 }
 
 @layer base {
@@ -107,15 +150,11 @@
   body {
     @apply bg-background text-foreground;
     /* Faint dot lattice: instrument-panel ground, invisible until you look. */
-    background-image: radial-gradient(
-      oklch(1 0 0 / 3%) 1px,
-      transparent 1px
-    );
+    background-image: radial-gradient(var(--dot-ink) 1px, transparent 1px);
     background-size: 22px 22px;
   }
   html {
     @apply font-sans;
-    color-scheme: dark;
   }
 }
 
@@ -124,8 +163,8 @@
   .hatch-free {
     background-image: repeating-linear-gradient(
       -45deg,
-      oklch(1 0 0 / 5%) 0px,
-      oklch(1 0 0 / 5%) 1px,
+      var(--hatch-ink) 0px,
+      var(--hatch-ink) 1px,
       transparent 1px,
       transparent 7px
     );
@@ -135,8 +174,8 @@
   .hatch-warn {
     background-image: repeating-linear-gradient(
       -45deg,
-      oklch(0.79 0.13 84 / 16%) 0px,
-      oklch(0.79 0.13 84 / 16%) 1px,
+      var(--hatch-warn-ink) 0px,
+      var(--hatch-warn-ink) 1px,
       transparent 1px,
       transparent 7px
     );
@@ -146,8 +185,8 @@
   .hatch-waste {
     background-image: repeating-linear-gradient(
       -45deg,
-      oklch(0.64 0.19 24 / 38%) 0px,
-      oklch(0.64 0.19 24 / 38%) 2px,
+      var(--hatch-waste-ink) 0px,
+      var(--hatch-waste-ink) 2px,
       transparent 2px,
       transparent 5px
     );

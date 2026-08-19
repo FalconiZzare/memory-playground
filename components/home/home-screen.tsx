@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { colorForIndex } from "@/engine/types";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /*
  * The hero strip plays the app's entire argument on loop:
@@ -209,8 +210,11 @@ export function HomeScreen({
 }) {
   return (
     <div className="flex h-full flex-col px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+      <div className="flex justify-end pt-3">
+        <ThemeToggle />
+      </div>
       {/* Hero */}
-      <div className="flex flex-1 flex-col justify-center gap-6 pt-6">
+      <div className="flex flex-1 flex-col justify-center gap-6">
         <div>
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-border/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
             <span className="inline-block size-1.5 rounded-full bg-primary" />

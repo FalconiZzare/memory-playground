@@ -10,6 +10,7 @@ import {
   type TranslationResult,
 } from "@/engine/paging";
 import { colorForIndex } from "@/engine/types";
+import { pagingDemoScript, type DemoStep } from "@/engine/demo";
 
 const TOTAL_MEMORY = 1024;
 const DEFAULT_PAGE_SIZE = 16;
@@ -31,10 +32,15 @@ interface PagingStore {
   translationPid: string | null;
   logicalAddr: number;
   translation: TranslationResult | null;
+  demoRunning: boolean;
+  demoCaption: string | null;
+  demoStep: number;
+  demoTotal: number;
 
   allocateProcess: (size: number) => boolean;
   killProcess: (pid: string) => void;
   reset: (pageSize?: number) => void;
+  setDemo: (on: boolean) => void;
   setTranslationPid: (pid: string | null) => void;
   setLogicalAddr: (addr: number) => void;
   runTranslation: () => void;
@@ -44,6 +50,19 @@ interface PagingStore {
 let processCounter = 0;
 let nonce = 0;
 
+// Demo playback bookkeeping (see simStore for the pattern).
+let demoTimer: ReturnType<typeof setTimeout> | null = null;
+let demoToken = 0;
+let demoPids: string[] = [];
+
+function stopDemoTimer() {
+  demoToken += 1;
+  if (demoTimer) {
+    clearTimeout(demoTimer);
+    demoTimer = null;
+  }
+}
+
 export const usePagingStore = create<PagingStore>((set, get) => ({
   state: createPagingState(TOTAL_MEMORY, DEFAULT_PAGE_SIZE),
   lastPlaced: [],
@@ -52,6 +71,10 @@ export const usePagingStore = create<PagingStore>((set, get) => ({
   translationPid: null,
   logicalAddr: 0,
   translation: null,
+  demoRunning: false,
+  demoCaption: null,
+  demoStep: 0,
+  demoTotal: 0,
 
   allocateProcess: (size) => {
     const s = get();
@@ -100,6 +123,8 @@ export const usePagingStore = create<PagingStore>((set, get) => ({
   },
 
   reset: (pageSize = DEFAULT_PAGE_SIZE) => {
+    stopDemoTimer();
+    demoPids = [];
     processCounter = 0;
     set({
       state: createPagingState(TOTAL_MEMORY, pageSize),
@@ -109,7 +134,64 @@ export const usePagingStore = create<PagingStore>((set, get) => ({
       translationPid: null,
       logicalAddr: 0,
       translation: null,
+      demoRunning: false,
+      demoCaption: null,
+      demoStep: 0,
+      demoTotal: 0,
     });
+  },
+
+  setDemo: (on) => {
+    stopDemoTimer();
+    if (!on) {
+      set({ demoRunning: false, demoCaption: null, demoStep: 0, demoTotal: 0 });
+      return;
+    }
+
+    // The script narrates 16 KB pages, so playback pins that page size.
+    get().reset(16);
+    const token = demoToken;
+    const script = pagingDemoScript();
+    set({ demoRunning: true, demoTotal: script.length });
+
+    const execute = (step: DemoStep) => {
+      if (step.kind === "alloc") {
+        if (get().allocateProcess(step.size)) {
+          demoPids.push(`P${processCounter}`);
+        }
+      } else if (step.kind === "kill") {
+        const pid = demoPids[step.index];
+        if (pid) get().killProcess(pid);
+      } else if (step.kind === "translate") {
+        const pid = demoPids[step.index];
+        if (pid) {
+          set({ translationPid: pid, logicalAddr: step.addr, translation: null });
+          get().runTranslation();
+        }
+      }
+    };
+
+    const runFrom = (index: number) => {
+      if (token !== demoToken) return;
+      const step = script[index];
+      execute(step);
+      set({ demoCaption: step.caption, demoStep: index + 1 });
+      if (index + 1 < script.length) {
+        demoTimer = setTimeout(() => runFrom(index + 1), step.dwell);
+      } else {
+        demoTimer = setTimeout(() => {
+          if (token !== demoToken) return;
+          set({
+            demoRunning: false,
+            demoCaption: null,
+            demoStep: 0,
+            demoTotal: 0,
+          });
+        }, step.dwell + 1500);
+      }
+    };
+
+    demoTimer = setTimeout(() => runFrom(0), 600);
   },
 
   setTranslationPid: (pid) =>

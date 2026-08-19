@@ -9,7 +9,8 @@ import {
   createInitialBlocks,
   free,
 } from "@/engine/allocator";
-import { nextAutoEvent } from "@/engine/autorun";
+import { toast } from "sonner";
+import { contigDemoScript, type DemoStep } from "@/engine/demo";
 import { computeMetrics } from "@/engine/metrics";
 import {
   colorForIndex,
@@ -46,8 +47,10 @@ interface SimStore {
   requestSize: number;
   lastFailure: FailureFlash | null;
   lastCompact: CompactFlash | null;
-  autoRun: boolean;
-  autoRunMs: number;
+  demoRunning: boolean;
+  demoCaption: string | null;
+  demoStep: number;
+  demoTotal: number;
 
   allocateProcess: (size: number) => boolean;
   killProcess: (pid: string) => void;
@@ -55,16 +58,30 @@ interface SimStore {
   reset: () => void;
   setStrategy: (s: Strategy) => void;
   setRequestSize: (kb: number) => void;
-  setAutoRun: (on: boolean) => void;
-  setAutoRunMs: (ms: number) => void;
-  autoTick: () => void;
+  setDemo: (on: boolean) => void;
 }
 
 let logId = 0;
 let opCounter = 0;
 let processCounter = 0;
 let flashNonce = 0;
-let autoTimer: ReturnType<typeof setInterval> | null = null;
+
+/*
+ * Demo playback bookkeeping. The timer is a setTimeout chain (steps have
+ * individual dwell times); the token invalidates any in-flight timeout
+ * when the demo is stopped or restarted with a different strategy.
+ */
+let demoTimer: ReturnType<typeof setTimeout> | null = null;
+let demoToken = 0;
+let demoPids: string[] = [];
+
+function stopDemoTimer() {
+  demoToken += 1;
+  if (demoTimer) {
+    clearTimeout(demoTimer);
+    demoTimer = null;
+  }
+}
 
 function entry(kind: LogKind, message: string): LogEntry {
   logId += 1;
@@ -108,8 +125,10 @@ export const useSimStore = create<SimStore>((set, get) => ({
   requestSize: 128,
   lastFailure: null,
   lastCompact: null,
-  autoRun: false,
-  autoRunMs: 900,
+  demoRunning: false,
+  demoCaption: null,
+  demoStep: 0,
+  demoTotal: 0,
 
   allocateProcess: (size) => {
     const s = get();
@@ -216,10 +235,8 @@ export const useSimStore = create<SimStore>((set, get) => ({
   },
 
   reset: () => {
-    if (autoTimer) {
-      clearInterval(autoTimer);
-      autoTimer = null;
-    }
+    stopDemoTimer();
+    demoPids = [];
     processCounter = 0;
     opCounter = 0;
     set({
@@ -230,7 +247,10 @@ export const useSimStore = create<SimStore>((set, get) => ({
       failedRequests: 0,
       lastFailure: null,
       lastCompact: null,
-      autoRun: false,
+      demoRunning: false,
+      demoCaption: null,
+      demoStep: 0,
+      demoTotal: 0,
     });
   },
 
@@ -245,37 +265,73 @@ export const useSimStore = create<SimStore>((set, get) => ({
         LOG_CAP,
       ),
     });
+    // Switching strategy mid-demo restarts the demo for the new strategy.
+    if (s.demoRunning) get().setDemo(true);
   },
 
   setRequestSize: (kb) => set({ requestSize: kb }),
 
-  setAutoRun: (on) => {
-    if (autoTimer) {
-      clearInterval(autoTimer);
-      autoTimer = null;
+  setDemo: (on) => {
+    stopDemoTimer();
+    if (!on) {
+      set({ demoRunning: false, demoCaption: null, demoStep: 0, demoTotal: 0 });
+      return;
     }
-    if (on) {
-      autoTimer = setInterval(() => get().autoTick(), get().autoRunMs);
-    }
-    set({ autoRun: on });
-  },
 
-  setAutoRunMs: (ms) => {
-    set({ autoRunMs: ms });
-    if (get().autoRun) {
-      if (autoTimer) clearInterval(autoTimer);
-      autoTimer = setInterval(() => get().autoTick(), ms);
-    }
-  },
+    get().reset(); // fresh 1024 KB stage (also clears demo fields)
+    const token = demoToken;
+    const script = contigDemoScript(get().strategy);
+    set({ demoRunning: true, demoTotal: script.length });
 
-  autoTick: () => {
-    const s = get();
-    const ev = nextAutoEvent(Math.random, Object.keys(s.processes));
-    if (ev.type === "alloc") {
-      s.allocateProcess(ev.size);
-    } else {
-      s.killProcess(ev.processId);
-    }
+    const execute = (step: DemoStep) => {
+      if (step.kind === "alloc") {
+        const ok = get().allocateProcess(step.size);
+        if (ok) {
+          demoPids.push(`P${processCounter}`);
+        } else {
+          const f = get().lastFailure;
+          if (f?.reason === "fragmentation") {
+            toast.error(`${f.size} KB request failed`, {
+              description: `${f.totalFree} KB free, but the largest hole is ${f.largestHole} KB. External fragmentation. Compact to recover.`,
+            });
+          }
+        }
+      } else if (step.kind === "kill") {
+        const pid = demoPids[step.index];
+        if (pid) get().killProcess(pid);
+      } else if (step.kind === "compact") {
+        const flash = get().compactMemory();
+        if (flash && flash.movedCount > 0) {
+          toast.success(`Compaction done: moved ${flash.movedKB} KB`, {
+            description: `${flash.movedCount} blocks relocated. That relocation is the cost of compaction.`,
+          });
+        }
+      }
+    };
+
+    const runFrom = (index: number) => {
+      if (token !== demoToken) return;
+      const step = script[index];
+      execute(step);
+      set({ demoCaption: step.caption, demoStep: index + 1 });
+      if (index + 1 < script.length) {
+        demoTimer = setTimeout(() => runFrom(index + 1), step.dwell);
+      } else {
+        // Linger on the final caption, then quietly end the demo.
+        demoTimer = setTimeout(() => {
+          if (token !== demoToken) return;
+          set({
+            demoRunning: false,
+            demoCaption: null,
+            demoStep: 0,
+            demoTotal: 0,
+          });
+        }, step.dwell + 1500);
+      }
+    };
+
+    // Small beat after the reset so the empty grid registers first.
+    demoTimer = setTimeout(() => runFrom(0), 600);
   },
 }));
 

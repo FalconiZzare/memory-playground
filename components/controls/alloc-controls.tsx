@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useSimStore } from "@/store/simStore";
+import { DemoCaptionBar } from "@/components/dashboard/demo-caption";
 
 const QUICK_SIZES = [64, 128, 256];
 
@@ -24,8 +25,11 @@ export function AllocControls() {
   const allocateProcess = useSimStore((s) => s.allocateProcess);
   const compactMemory = useSimStore((s) => s.compactMemory);
   const reset = useSimStore((s) => s.reset);
-  const autoRun = useSimStore((s) => s.autoRun);
-  const setAutoRun = useSimStore((s) => s.setAutoRun);
+  const demoRunning = useSimStore((s) => s.demoRunning);
+  const demoCaption = useSimStore((s) => s.demoCaption);
+  const demoStep = useSimStore((s) => s.demoStep);
+  const demoTotal = useSimStore((s) => s.demoTotal);
+  const setDemo = useSimStore((s) => s.setDemo);
   const lastFailure = useSimStore((s) => s.lastFailure);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -67,7 +71,8 @@ export function AllocControls() {
   };
 
   return (
-    <div className="flex flex-col gap-2.5 px-3 pb-3">
+    <div className="flex flex-col gap-2.5 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+      <DemoCaptionBar caption={demoCaption} step={demoStep} total={demoTotal} />
       <div className="flex items-center gap-3">
         <span className="shrink-0 text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
           Request
@@ -134,12 +139,12 @@ export function AllocControls() {
         </Button>
         <div className="flex h-9 items-center gap-2 rounded-md border border-border px-2.5">
           <Zap
-            className={`size-3.5 ${autoRun ? "text-warning" : "text-muted-foreground"}`}
+            className={`size-3.5 ${demoRunning ? "text-warning" : "text-muted-foreground"}`}
           />
           <Switch
-            checked={autoRun}
-            onCheckedChange={setAutoRun}
-            aria-label="Auto-run"
+            checked={demoRunning}
+            onCheckedChange={setDemo}
+            aria-label="Run strategy demo"
           />
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HomeScreen } from "@/components/home/home-screen";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { RamGrid } from "@/components/ram-grid/ram-grid";
 import { StatsStrip } from "@/components/dashboard/stats-strip";
 import { AllocControls } from "@/components/controls/alloc-controls";
@@ -51,7 +52,7 @@ export default function Home() {
 
   if (view === "home") {
     return (
-      <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] sm:border-x">
+      <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:border-x">
         <HomeScreen
           onEnter={(m) => {
             setMode(m);
@@ -63,7 +64,7 @@ export default function Home() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] sm:border-x">
+    <div className="mx-auto flex h-dvh w-full max-w-lg flex-col overflow-hidden border-border/60 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:border-x">
       <Tabs
         value={mode}
         onValueChange={(v) => setMode(v as "contiguous" | "paging")}
@@ -83,14 +84,17 @@ export default function Home() {
               1024 KB
             </span>
           </h1>
-          <TabsList className="h-8">
-            <TabsTrigger value="contiguous" className="px-3 text-xs">
-              Contiguous
-            </TabsTrigger>
-            <TabsTrigger value="paging" className="px-3 text-xs">
-              Paging
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-1.5">
+            <TabsList className="h-8">
+              <TabsTrigger value="contiguous" className="px-3 text-xs">
+                Contiguous
+              </TabsTrigger>
+              <TabsTrigger value="paging" className="px-3 text-xs">
+                Paging
+              </TabsTrigger>
+            </TabsList>
+            <ThemeToggle />
+          </div>
         </header>
 
         <TabsContent
